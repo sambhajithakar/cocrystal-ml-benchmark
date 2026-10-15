@@ -12,6 +12,8 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import csv
+import collections
 import os
 
 import matplotlib
@@ -178,6 +180,69 @@ def figure_s1(results: str, outdir: str) -> dict:
             "n_pairs": int(len(sub)), "n_anchors": int(sub.anchor_smiles.nunique())}
 
 
+def contradictory_pairs(results: str) -> str:
+    """List the seven pairs whose two records disagree, read from the source table."""
+    rows = []
+    with open(f"{results}/as-distributed/ccgnet_pairs_smiles.tab") as handle:
+        for row in csv.reader(handle, delimiter="\t"):
+            rows.append(row)
+    groups: dict[tuple[str, str], list] = collections.defaultdict(list)
+    for row in rows:
+        groups[tuple(sorted(row[:2]))].append(row)
+    out = ["| Positive record | Negative record |", "|---|---|"]
+    for group in groups.values():
+        if len({r[2] for r in group}) > 1:
+            pos = [r[3] for r in group if r[2] == "1"][0]
+            neg = [r[3] for r in group if r[2] == "0"][0]
+            out.append(f"| {pos} | {neg} |")
+    assert len(out) == 9, len(out)
+    return "\n".join(out)
+
+
+def table_s6(results: str) -> tuple[str, dict]:
+    """Compare the curated primary analysis with the source table as distributed."""
+    cur = pd.read_csv(f"{results}/ablation.csv")
+    alt = pd.read_csv(f"{results}/as-distributed/ablation.csv")
+    cur_d = pd.read_csv(f"{results}/druglike_subset.csv")
+    alt_d = pd.read_csv(f"{results}/as-distributed/druglike_subset.csv")
+
+    def ba(frame, split):
+        row = frame[(frame.feature_set == "physics+structural") & (frame.split == split)]
+        return float(row.balanced_acc.iloc[0])
+
+    def ba_d(frame, split):
+        row = frame[frame.split == split]
+        return float(row.balanced_acc.iloc[0])
+
+    v = {
+        "cur_rand": ba(cur, "random"), "cur_held": ba(cur, "anchor_held_out"),
+        "alt_rand": ba(alt, "random"), "alt_held": ba(alt, "anchor_held_out"),
+        "cur_dl": ba_d(cur_d, "random") - ba_d(cur_d, "anchor_held_out"),
+        "alt_dl": ba_d(alt_d, "random") - ba_d(alt_d, "anchor_held_out"),
+        "cur_base": float(cur[cur.split == "anchor_held_out"].base_rate.iloc[0]),
+        "alt_base": float(alt[alt.split == "anchor_held_out"].base_rate.iloc[0]),
+        "cur_enr": float(cur[(cur.feature_set == "physics+structural") &
+                             (cur.split == "anchor_held_out")].enrichment_top10pct.iloc[0]),
+        "alt_enr": float(alt[(alt.feature_set == "physics+structural") &
+                             (alt.split == "anchor_held_out")].enrichment_top10pct.iloc[0]),
+    }
+    v["cur_pen"] = v["cur_rand"] - v["cur_held"]
+    v["alt_pen"] = v["alt_rand"] - v["alt_held"]
+
+    rows = [
+        "| Quantity | Curated (reported) | Source table as distributed |",
+        "|---|---|---|",
+        f"| Pairs | 7,757 | 7,775 |",
+        f"| Balanced accuracy, random split | {v['cur_rand']:.3f} | {v['alt_rand']:.3f} |",
+        f"| Balanced accuracy, molecule held out | {v['cur_held']:.3f} | {v['alt_held']:.3f} |",
+        f"| **Protocol penalty** | **{v['cur_pen']:.3f}** | **{v['alt_pen']:.3f}** |",
+        f"| Protocol penalty, drug-like subset | {v['cur_dl']:.3f} | {v['alt_dl']:.3f} |",
+        f"| Base rate | {v['cur_base']:.3f} | {v['alt_base']:.3f} |",
+        f"| Top-decile enrichment | {v['cur_enr']:.2f}\u00d7 | {v['alt_enr']:.2f}\u00d7 |",
+    ]
+    return "\n".join(rows), v
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", required=True)
@@ -192,10 +257,14 @@ def main() -> None:
     print("[si] Table S5 ...")
     s5, stats = table_s5(args.results)
     n_const = int((stats.distinct_values < 2).sum())
+    print("[si] Table S6 ...")
+    s6_pairs = contradictory_pairs(args.results)
+    s6, v6 = table_s6(args.results)
+    print(f"     penalty curated {v6['cur_pen']:.3f} vs as distributed {v6['alt_pen']:.3f}")
 
     doc = f"""# Supporting Information
 
-**How Evaluation Protocol and Class Balance Inflate Reported Performance in Machine-Learning Co-Crystal Screening**
+**Data-Centric Machine Learning for Pharmaceutical Co-Crystal Discovery: Molecule-Held-Out Evaluation and Enrichment-Based Benchmarking of 7,757 Experimental Pairs**
 
 Sambhaji Balaso Thakar<sup>1,</sup>\\* and Pradnya Namdev Ghorpade<sup>1</sup>
 
@@ -213,7 +282,7 @@ Sambhaji Balaso Thakar<sup>1,</sup>\\* and Pradnya Namdev Ghorpade<sup>1</sup>
 - Table S4. Drug-like subset, both protocols, all screening metrics
 - Table S5. Variance of every pair-level (physics) feature
 - Figure S1. Precision and enrichment against selected fraction, drug-like subset
-- SMILES.csv (separate file). Canonical SMILES and labels for all 7,775 pairs
+- SMILES.csv (separate file). Canonical SMILES and labels for all 7,757 curated pairs
 
 ---
 
@@ -251,7 +320,7 @@ Random forest on 33 features, five-fold cross-validation, restricted to the {f1[
 
 ## Table S5. Variance of every pair-level (physics) feature
 
-Computed over all 7,775 usable pairs. {n_const} of the 13 pair-level features take a single value across the entire dataset and therefore carry no information. These are the four Δp*K*<sub>a</sub>-derived terms and their availability flags, which are constant because the source dataset contains no p*K*<sub>a</sub> values. This table is the direct evidence for the statement in Section 2.2 of the manuscript that the physics block as evaluated excludes the term with the strongest theoretical claim to relevance.
+Computed over all 7,757 curated pairs. {n_const} of the 13 pair-level features take a single value across the entire dataset and therefore carry no information. These are the four Δp*K*<sub>a</sub>-derived terms and their availability flags, which are constant because the source dataset contains no p*K*<sub>a</sub> values. This table is the direct evidence for the statement in Section 2.2 of the manuscript that the physics block as evaluated excludes the term with the strongest theoretical claim to relevance.
 
 {s5}
 
@@ -265,9 +334,30 @@ Computed over all 7,775 usable pairs. {n_const} of the 13 pair-level features ta
 
 ---
 
+## Table S6. Sensitivity of the reported values to the curation step
+
+{s6}
+
+Eighteen records were removed in curation (Section 2.1): four exact repeats of a pair
+already present with the same label, and fourteen records belonging to seven pairs
+whose two records disagreed. In every one of those seven, the positive record carries
+a Cambridge Structural Database refcode and the negative a numeric identifier pair,
+so the two come from different sources. The seven are:
+
+{s6_pairs}
+
+The table above gives every headline value
+computed both ways. Removing 0.23% of the records moves the protocol penalty by
+{abs(v6['cur_pen']-v6['alt_pen']):.3f} balanced accuracy, which is within one fold
+standard deviation of the held-out estimate and is itself a demonstration of the
+instability that Section 3.1 reports. The direction of every conclusion is unchanged,
+and the drug-like result is stronger on the curated data.
+
+---
+
 ## SMILES.csv
 
-Canonical SMILES for both components of all 7,775 usable pairs, with the binary formability label and the component assigned as anchor. Columns: `pair_id`, `anchor_smiles`, `coformer_smiles`, `formability_label` (1 = co-crystal formed, 0 = co-crystallisation attempted and failed), `label_meaning`. Derived from the CCGNet dataset (MIT licence) by `prepare_ccgnet.py`; see Data and Software Availability in the manuscript.
+Canonical SMILES for both components of all 7,757 curated pairs, with the binary formability label and the component assigned as anchor. Columns: `pair_id`, `anchor_smiles`, `coformer_smiles`, `formability_label` (1 = co-crystal formed, 0 = co-crystallisation attempted and failed), `label_meaning`. Derived from the CCGNet dataset (MIT licence) by `prepare_ccgnet.py`; see Data and Software Availability in the manuscript.
 """
     path = f"{args.outdir}/supporting-information.md"
     with open(path, "w") as fh:

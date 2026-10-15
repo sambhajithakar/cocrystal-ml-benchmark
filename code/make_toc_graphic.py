@@ -64,14 +64,13 @@ def main() -> None:
     fig.patch.set_facecolor("white")
 
     # Vertical budget for 1.75 in: title band, bar band, caption band.
-    fig.text(0.035, 0.955,
+    # ACS TOC spec: no type below 8 pt at the printed 3.25 x 1.75 in size.
+    fig.text(0.035, 0.96,
              "Co-crystal formability ML:\nwhat survives a stricter test",
-             fontsize=8.5, fontweight="bold", va="top", ha="left",
-             linespacing=1.25)
-    fig.text(0.035, 0.655, "Balanced accuracy, 7,775 experimental pairs",
-             fontsize=6.5, color=MUTED, va="center", ha="left")
+             fontsize=9, fontweight="bold", va="top", ha="left",
+             linespacing=1.2)
 
-    ax = fig.add_axes([0.34, 0.28, 0.60, 0.30])
+    ax = fig.add_axes([0.40, 0.355, 0.545, 0.265])
 
     labels = ["Random split", "Molecule held out"]
     values = [v["random"], v["held_out"]]
@@ -86,7 +85,7 @@ def main() -> None:
                 fontsize=8, color=INK, fontweight="bold", zorder=4)
 
     ax.set_yticks(range(len(labels)))
-    ax.set_yticklabels(labels, fontsize=7.5)
+    ax.set_yticklabels(labels, fontsize=8)
     ax.invert_yaxis()
     ax.set_xlim(0, 1.06)
     ax.set_xticks([])
@@ -95,12 +94,12 @@ def main() -> None:
     ax.tick_params(axis="y", length=0)
 
     drop = v["random"] - v["held_out"]
-    fig.text(0.035, 0.115,
-             f"Leakage costs {drop:.3f} balanced accuracy. At a "
-             f"{v['base_rate']*100:.0f}% positive\n"
-             f"base rate, enrichment is only {v['enrichment']:.2f}\u00d7: "
-             f"high ROC-AUC\n\u2260 screening value.",
-             fontsize=6.8, color=INK, va="center", ha="left", linespacing=1.4)
+    fig.text(0.035, 0.175,
+             f"Balanced accuracy, 7,757 curated pairs.\n"
+             f"Leakage costs {drop:.3f}. At {v['base_rate']*100:.0f}% positives,\n"
+             f"enrichment is {v['enrichment']:.2f}\u00d7 \u2014 high ROC-AUC is not\n"
+             f"screening value.",
+             fontsize=8, color=INK, va="center", ha="left", linespacing=1.3)
 
     for ext in ("png", "pdf", "tif"):
         fig.savefig(f"{args.outdir}/toc_graphic.{ext}", dpi=300,

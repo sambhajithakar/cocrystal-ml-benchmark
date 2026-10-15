@@ -57,6 +57,29 @@ def block_to_smiles(block: str) -> str | None:
         return None
 
 
+def curate(rows):
+    """Collapse repeated pairs and drop pairs whose records disagree.
+
+    Pairs are compared without regard to component order, on canonical SMILES,
+    since the same pair is recorded in either order by different sources.
+    Returns the kept rows, the number of duplicate records collapsed, the
+    number of records removed as contradictory, and the contradictory pairs.
+    """
+    by_pair: dict[tuple[str, str], list] = collections.defaultdict(list)
+    for row in rows:
+        by_pair[tuple(sorted(row[:2]))].append(row)
+
+    kept, repeats, contradictions, contradictory = [], 0, 0, []
+    for key, group in by_pair.items():
+        if len({r[2] for r in group}) > 1:
+            contradictions += len(group)
+            contradictory.append(" + ".join(key))
+            continue
+        kept.append(group[0])
+        repeats += len(group) - 1
+    return kept, repeats, contradictions, contradictory
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -102,9 +125,24 @@ def main() -> None:
         else:
             dropped += 1
 
-    counts = collections.Counter(r[2] for r in kept)
     print(f"[out] {len(kept)} pairs usable, {dropped} dropped for an "
           f"unresolvable component")
+
+    # Curation. The source table contains a small number of pairs that appear
+    # twice, and some of those carry opposite labels: the positive record
+    # carries a CSD refcode and the negative a numeric identifier pair, so the
+    # two come from different sources. A pair cannot be both, so the whole
+    # pair is removed rather than one record arbitrarily preferred. Exact
+    # repeats of the same pair with the same label are collapsed to one row.
+    kept, repeats, contradictions, contradictory_pairs = curate(kept)
+    print(f"[curate] {repeats} duplicate records collapsed, "
+          f"{contradictions} records removed for contradictory labels "
+          f"({len(contradictory_pairs)} distinct pairs)")
+    for key in sorted(contradictory_pairs):
+        print(f"[curate]   contradictory: {key}")
+
+    counts = collections.Counter(r[2] for r in kept)
+    print(f"[out] {len(kept)} pairs after curation")
     print(f"[out] labels: {counts.get('1', 0)} positive, {counts.get('0', 0)} negative")
 
     with open(args.out, "w", encoding="utf-8") as fh:
