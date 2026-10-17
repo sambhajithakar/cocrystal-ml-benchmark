@@ -5,7 +5,7 @@ Everything needed to reproduce every number in:
 > Thakar, S. B.; Ghorpade, P. N. *Data-Centric Machine Learning for
 > Pharmaceutical Co-Crystal Discovery: Molecule-Held-Out Evaluation and
 > Enrichment-Based Benchmarking of 7,757 Experimental Pairs.*
-> Submitted to *Journal of Chemical Information and Modeling*, 2026.
+> Manuscript submitted for publication, 2026.
 
 No proprietary data or software is used. Licence: MIT.
 
