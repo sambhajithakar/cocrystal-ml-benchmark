@@ -1,0 +1,3 @@
+protocol,folds,anchor_molecules_shared_mean,test_pairs_whose_partner_was_seen_mean,test_pairs_with_either_component_seen_mean,test_fold_size_min,test_fold_size_max,test_base_rate_min,test_base_rate_max
+anchor held out,5,0.0,0.668295479471176,0.8995811647955758,1551,1552,0.8201160541586073,0.9200515796260477
+fully molecule-disjoint,5,0.0,0.0,0.0,131,7232,0.8561946902654868,1.0

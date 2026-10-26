@@ -50,6 +50,9 @@ python3 code/prepare_ccgnet.py --table ccgnet/data/CC_Table/CC_Table.tab \
 python3 code/full_analysis.py   --table results/ccgnet_pairs_smiles.tab --outdir results
 python3 code/druglike_subset.py --table results/ccgnet_pairs_smiles.tab --outdir results
 python3 code/make_figures.py    --results results --outdir figures
+
+python3 code/audit_split_integrity.py --table results/ccgnet_pairs_smiles.tab \
+                                      --out results/split_integrity_scores.csv
 ```
 
 `results/` already contains the outputs, so the analysis scripts can be run
@@ -65,7 +68,8 @@ against the shipped pair table without re-deriving it.
 | `code/druglike_subset.py` | Repeats the protocol comparison on drug-like anchors. Produces Table 4. |
 | `code/make_figures.py` | Figures 1–3, regenerated from the result tables. |
 | `code/make_toc_graphic.py` | The journal Table of Contents graphic. |
-| `code/make_si.py` | Supporting Information tables S1–S6 and Figure S1. |
+| `code/make_si.py` | Supporting Information tables S1–S7 and Figure S1. |
+| `code/audit_split_integrity.py` | Split-integrity audit: duplicate and label checks, component leakage across folds, and the fully molecule-disjoint protocol. Produces Table S7. |
 | `code/make_smiles_csv.py` | The published `SMILES.csv`, built through the same loader the analysis uses. |
 | `code/benchmark_public.py` | Standalone formability benchmark on any SMILES pair table. |
 | `code/build_docx.py` | Manuscript formatting (not part of the analysis). |
@@ -86,6 +90,8 @@ The remaining CSVs are the measured results: `ablation.csv`,
 `model_families.csv`, `permutation_importance.csv`, `druglike_subset.csv`,
 each with its uncurated counterpart under `results/as-distributed/`.
 `results/SMILES.csv` is the table published as Supporting Information.
+`results/split_integrity_leakage.csv` and `results/split_integrity_scores.csv`
+are the split-integrity audit outputs reported as Table S7.
 
 ## A note on scope
 
