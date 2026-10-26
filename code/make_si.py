@@ -243,6 +243,46 @@ def table_s6(results: str) -> tuple[str, dict]:
     return "\n".join(rows), v
 
 
+def table_s7(results: str) -> tuple[str, dict]:
+    """Table S7 from the split-integrity audit outputs."""
+    leak = pd.read_csv(f"{results}/split_integrity_leakage.csv").set_index("protocol")
+    sc = pd.read_csv(f"{results}/split_integrity_scores.csv").set_index("protocol")
+    A, D = "anchor held out", "fully molecule-disjoint"
+
+    def pct(col, key):
+        v = leak.loc[key, col] * 100
+        return f"{v:.0f}%" if v == 0 else f"{v:.1f}%"
+
+    rows = ["| Quantity | Anchor held out | Fully molecule-disjoint |",
+            "|---|---|---|",
+            "| Anchor molecules shared between train and test | "
+            f"{leak.loc[A, 'anchor_molecules_shared_mean']:.0f} | "
+            f"{leak.loc[D, 'anchor_molecules_shared_mean']:.0f} |",
+            "| Test pairs whose partner component was seen in training | "
+            f"{pct('test_pairs_whose_partner_was_seen_mean', A)} | "
+            f"{pct('test_pairs_whose_partner_was_seen_mean', D)} |",
+            "| Test pairs with either component seen in training | "
+            f"{pct('test_pairs_with_either_component_seen_mean', A)} | "
+            f"{pct('test_pairs_with_either_component_seen_mean', D)} |",
+            "| Test fold size, smallest | "
+            f"{leak.loc[A, 'test_fold_size_min']:,} | {leak.loc[D, 'test_fold_size_min']:,} |",
+            "| Test fold size, largest | "
+            f"{leak.loc[A, 'test_fold_size_max']:,} | {leak.loc[D, 'test_fold_size_max']:,} |",
+            "| Test-fold base rate, lowest | "
+            f"{leak.loc[A, 'test_base_rate_min']:.3f} | {leak.loc[D, 'test_base_rate_min']:.3f} |",
+            "| Test-fold base rate, highest | "
+            f"{leak.loc[A, 'test_base_rate_max']:.3f} | {leak.loc[D, 'test_base_rate_max']:.3f} |",
+            "| Scorable folds of five | "
+            f"{sc.loc[A, 'n_folds']:.0f} | {sc.loc[D, 'n_folds']:.0f} |"]
+    v = {"partner": leak.loc[A, "test_pairs_whose_partner_was_seen_mean"],
+         "either": leak.loc[A, "test_pairs_with_either_component_seen_mean"],
+         "big": int(leak.loc[D, "test_fold_size_max"]),
+         "small": int(leak.loc[D, "test_fold_size_min"]),
+         "bacc": sc.loc[D, "balanced_acc"], "bacc_sd": sc.loc[D, "balanced_acc_sd"],
+         "folds": int(sc.loc[D, "n_folds"])}
+    return "\n".join(rows), v
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", required=True)
@@ -261,14 +301,19 @@ def main() -> None:
     s6_pairs = contradictory_pairs(args.results)
     s6, v6 = table_s6(args.results)
     print(f"     penalty curated {v6['cur_pen']:.3f} vs as distributed {v6['alt_pen']:.3f}")
+    print("[si] Table S7 ...")
+    s7, v7 = table_s7(args.results)
+    print(f"     partner leakage {v7['partner']:.3f}, disjoint bACC {v7['bacc']:.3f}")
 
     doc = f"""# Supporting Information
 
 **Data-Centric Machine Learning for Pharmaceutical Co-Crystal Discovery: Molecule-Held-Out Evaluation and Enrichment-Based Benchmarking of 7,757 Experimental Pairs**
 
-Sambhaji Balaso Thakar<sup>1,</sup>\\* and Pradnya Namdev Ghorpade<sup>1</sup>
+Sambhaji Balaso Thakar<sup>1,2,</sup>\\* and Pradnya Namdev Ghorpade<sup>1,2</sup>
 
-<sup>1</sup> Advanced Data Science and Gen AI Unit, Aditya BioNova Analytics, Pune, Maharashtra, India
+<sup>1</sup> Advanced Bioinformatics, Data Science and Generative AI Unit, Aditya BioNova Analytics, Pune, Maharashtra, India
+
+<sup>2</sup> Oncology Clinical Trial Analytics and Research Unit, Aditya BioNova Analytics, Pune, Maharashtra, India
 
 \\* Corresponding author. E-mail: drsambhajithakar@adityabionova.com
 
@@ -281,6 +326,8 @@ Sambhaji Balaso Thakar<sup>1,</sup>\\* and Pradnya Namdev Ghorpade<sup>1</sup>
 - Table S3. Permutation importance of all 33 features
 - Table S4. Drug-like subset, both protocols, all screening metrics
 - Table S5. Variance of every pair-level (physics) feature
+- Table S6. Sensitivity of the reported values to the curation step
+- Table S7. Split integrity: component leakage and the limits of a molecule-disjoint protocol
 - Figure S1. Precision and enrichment against selected fraction, drug-like subset
 - SMILES.csv (separate file). Canonical SMILES and labels for all 7,757 curated pairs
 
@@ -328,7 +375,7 @@ Computed over all 7,757 curated pairs. {n_const} of the 13 pair-level features t
 
 ## Figure S1. Precision and enrichment on the drug-like subset
 
-![Figure S1](figureS1_druglike_enrichment.png)
+![](figureS1_druglike_enrichment.png)
 
 **Figure S1.** (a) Precision among the top-scoring fraction of candidates on the drug-like subset, with the subset base rate of {f1['base']:.3f} marked. (b) The same quantity as enrichment factor, with unity marked. Shaded bands are the standard deviation across five folds under the anchor-held-out protocol. Enrichment never exceeds {f1['max_enrichment']:.2f}, below the {1.15:.2f} ceiling on the full dataset, confirming that the base-rate problem of Section 3.2 is worse rather than better on pharmaceutically plausible chemistry.
 
@@ -352,6 +399,32 @@ computed both ways. Removing 0.23% of the records moves the protocol penalty by
 standard deviation of the held-out estimate and is itself a demonstration of the
 instability that Section 3.1 reports. The direction of every conclusion is unchanged,
 and the drug-like result is stronger on the curated data.
+
+## Table S7. Split integrity: component leakage and the limits of a molecule-disjoint protocol
+
+Measured on the 7,757 curated pairs by `audit_split_integrity.py`, a script written for the
+pre-submission audit and kept separate from the analysis that produces the results in Section 3.
+Values are means over the five folds of each protocol.
+
+{s7}
+
+The curated table contains 7,757 distinct unordered pairs with no pair appearing twice and no
+pair carrying contradictory labels. The anchor-held-out protocol is exactly anchor-disjoint, as
+intended, but {v7['partner']*100:.1f}% of test pairs still share their partner component with the
+training folds, which is why Section 2.3 reports its figures as upper bounds.
+
+The fully molecule-disjoint protocol was built by taking connected components of the graph whose
+nodes are molecules and whose edges are the curated pairs, so that neither component of a test
+pair can occur in training. On this dataset that protocol is degenerate rather than merely
+strict: the graph has 416 components, but a single component holds {v7['big']:,} of the 7,757
+pairs. The resulting folds are therefore wildly unbalanced in size, from {v7['small']:,} to
+{v7['big']:,} pairs; one test fold contains only positives and cannot be scored; and balanced
+accuracy over the three scorable folds falls to {v7['bacc']:.3f} (standard deviation
+{v7['bacc_sd']:.3f}), which is chance. That figure measures the failure of the split, not the
+difficulty of the chemistry, and we do not report it as a performance result. It is given here to
+make the point in Section 2.3 concrete: on a dataset this concentrated, a genuinely
+molecule-disjoint benchmark cannot be obtained by resplitting, only by collecting pairs that
+reach beyond the dominant component.
 
 ---
 
