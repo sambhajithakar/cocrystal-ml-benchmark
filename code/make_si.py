@@ -311,9 +311,9 @@ def main() -> None:
 
 Sambhaji Balaso Thakar<sup>1,2,</sup>\\* and Pradnya Namdev Ghorpade<sup>1,2</sup>
 
-<sup>1</sup> Advanced Bioinformatics, Data Science and Generative AI Unit, Aditya BioNova Analytics, Pune, Maharashtra, India
+<sup>1</sup> Advanced Bioinformatics, Data Science and Generative AI Unit, Aditya BioNova Analytics, Thakar Mala Road, At/Post Haroli, Taluka Shirol, District Kolhapur 416102, Maharashtra, India
 
-<sup>2</sup> Oncology Clinical Trial Analytics and Research Unit, Aditya BioNova Analytics, Pune, Maharashtra, India
+<sup>2</sup> Oncology Clinical Trial Analytics and Research Unit, Aditya BioNova Analytics, Thakar Mala Road, At/Post Haroli, Taluka Shirol, District Kolhapur 416102, Maharashtra, India
 
 \\* Corresponding author. E-mail: drsambhajithakar@adityabionova.com
 
