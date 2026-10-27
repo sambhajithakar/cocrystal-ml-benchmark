@@ -97,7 +97,7 @@ def main() -> None:
     fig.text(0.035, 0.175,
              f"Balanced accuracy, 7,757 curated pairs.\n"
              f"Leakage costs {drop:.3f}. At {v['base_rate']*100:.0f}% positives,\n"
-             f"enrichment is {v['enrichment']:.2f}\u00d7 \u2014 high ROC-AUC is not\n"
+             f"enrichment is {v['enrichment']:.2f}\u00d7, so high ROC-AUC is not\n"
              f"screening value.",
              fontsize=8, color=INK, va="center", ha="left", linespacing=1.3)
 

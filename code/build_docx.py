@@ -75,6 +75,11 @@ def to_pandoc_markdown(text: str) -> str:
     # Section separators are a reading aid in the markdown source; in Word they
     # become a full-width rule across the page, which looks like a stray line.
     text = re.sub(r"^-{3,}\s*$", "", text, flags=re.M)
+    # A reference line begins "(1) Author, A." and pandoc reads that as an
+    # ordered-list marker, which drops the literal number and lets Word
+    # renumber the list in its own style. A no-break space after the closing
+    # bracket keeps the number as text and the reference as a paragraph.
+    text = re.sub(r"^\((\d+)\) +", "(\\1)\u00a0", text, flags=re.M)
     return text
 
 
@@ -286,6 +291,7 @@ def format_document(path: str, line_numbers: bool = True) -> dict:
         title = name == "Title"
         has_image = bool(para._p.findall(".//" + qn("w:drawing")))
         listed = bool(para._p.findall(".//" + qn("w:numPr")))
+        reference = bool(re.match(r"^\(\d+\)\u00a0", para.text))
         text = para.text.strip()
         # A caption is the bold "Figure N." or "Table N." line under a float.
         caption = text[:7].rstrip(".").rstrip() in ("Figure", "Table") and (
@@ -306,6 +312,14 @@ def format_document(path: str, line_numbers: bool = True) -> dict:
             pf.space_before, pf.space_after = Pt(14), Pt(6)
             pf.first_line_indent = Inches(0)
             pf.keep_with_next = True
+        elif reference:
+            # ACS sets a reference list with the number hanging to the left of
+            # the text block.
+            pf.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            pf.line_spacing_rule = WD_LINE_SPACING.DOUBLE
+            pf.space_before = pf.space_after = Pt(0)
+            pf.left_indent = Inches(0.4)
+            pf.first_line_indent = Inches(-0.4)
         elif listed:
             # A numbered or bulleted item carries its own indent from the list
             # definition; adding the body indent on top of it pushes the text
