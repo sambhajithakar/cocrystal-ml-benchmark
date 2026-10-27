@@ -36,15 +36,26 @@ C_RANDOM = "#1F6FB2"     # random split
 C_HELDOUT = "#C2571A"    # anchor held out
 H_RANDOM = ""            # secondary encoding so the pair survives greyscale
 H_HELDOUT = "///"
-INK = "#1a1a1a"
-MUTED = "#6b6b6b"
-GRID = "#d9d9d9"
+INK = "#000000"
+MUTED = "#4d4d4d"
+GRID = "#e3e3e3"
 
+# ACS asks for figure lettering in a sans-serif face (Helvetica or Arial) and
+# prints line art in black. Liberation Sans carries Arial's metrics, so the
+# figures keep the proportions ACS expects on a machine without Arial itself.
 plt.rcParams.update({
-    "font.family": "DejaVu Sans", "font.size": 8,
-    "axes.edgecolor": MUTED, "axes.labelcolor": INK, "text.color": INK,
-    "xtick.color": MUTED, "ytick.color": MUTED,
+    "font.family": "Liberation Sans",
+    "font.sans-serif": ["Liberation Sans", "Arial", "Helvetica", "FreeSans",
+                        "DejaVu Sans"],
+    "font.size": 8,
+    "axes.edgecolor": INK, "axes.labelcolor": INK, "text.color": INK,
+    "axes.linewidth": 0.8,
+    "xtick.color": INK, "ytick.color": INK,
+    "xtick.direction": "out", "ytick.direction": "out",
+    "xtick.major.size": 3.0, "ytick.major.size": 3.0,
+    "xtick.major.width": 0.8, "ytick.major.width": 0.8,
     "axes.spines.top": False, "axes.spines.right": False,
+    "legend.frameon": False,
     "figure.dpi": 300, "savefig.dpi": 300, "savefig.bbox": "tight",
 })
 
@@ -63,7 +74,7 @@ def figure1(results_dir: str, out: str) -> None:
     x = np.arange(len(order))
     w = 0.38
 
-    fig, ax = plt.subplots(figsize=(4.2, 2.7))
+    fig, ax = plt.subplots(figsize=(4.60, 2.7))
     for i, (split, colour, hatch, label) in enumerate([
         ("random", C_RANDOM, H_RANDOM, "Random split"),
         ("anchor_held_out", C_HELDOUT, H_HELDOUT, "Anchor held out"),
@@ -72,7 +83,7 @@ def figure1(results_dir: str, out: str) -> None:
         ax.bar(x + (i - 0.5) * w, sub.balanced_acc, w * 0.94,
                yerr=sub.balanced_acc_sd, capsize=2.5,
                color=colour, hatch=hatch, edgecolor="white", linewidth=0.8,
-               error_kw={"ecolor": MUTED, "elinewidth": 0.8}, label=label, zorder=3)
+               error_kw={"ecolor": INK, "elinewidth": 0.8, "capthick": 0.8}, label=label, zorder=3)
 
     ax.set_xticks(x); ax.set_xticklabels([SHORT[o] for o in order])
     ax.set_xlabel("Feature set (number of features)", labelpad=2)
@@ -174,7 +185,7 @@ def figure3(results_dir: str, out: str) -> None:
     ypos = np.arange(len(imp))
     for yi, (v, e, c, h) in enumerate(zip(imp.importance, imp.sd, colours, hatches)):
         ax.barh(yi, v, 0.72, xerr=e, color=c, hatch=h, edgecolor="white",
-                linewidth=0.8, error_kw={"ecolor": MUTED, "elinewidth": 0.8}, zorder=3)
+                linewidth=0.8, error_kw={"ecolor": INK, "elinewidth": 0.8, "capthick": 0.8}, zorder=3)
     ax.set_yticks(ypos); ax.set_yticklabels(labels, fontsize=7)
     ax.set_xlabel("Permutation importance (Δ ROC-AUC)")
     ax.xaxis.grid(True, color=GRID, lw=0.6, zorder=0); ax.set_axisbelow(True)
