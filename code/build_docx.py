@@ -285,6 +285,7 @@ def format_document(path: str, line_numbers: bool = True) -> dict:
         heading = name.startswith("Heading")
         title = name == "Title"
         has_image = bool(para._p.findall(".//" + qn("w:drawing")))
+        listed = bool(para._p.findall(".//" + qn("w:numPr")))
         text = para.text.strip()
         # A caption is the bold "Figure N." or "Table N." line under a float.
         caption = text[:7].rstrip(".").rstrip() in ("Figure", "Table") and (
@@ -305,6 +306,15 @@ def format_document(path: str, line_numbers: bool = True) -> dict:
             pf.space_before, pf.space_after = Pt(14), Pt(6)
             pf.first_line_indent = Inches(0)
             pf.keep_with_next = True
+        elif listed:
+            # A numbered or bulleted item carries its own indent from the list
+            # definition; adding the body indent on top of it pushes the text
+            # out of line with everything around it.
+            pf.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            pf.line_spacing_rule = WD_LINE_SPACING.DOUBLE
+            pf.space_before = pf.space_after = Pt(0)
+            pf.left_indent = Inches(0.5)
+            pf.first_line_indent = Inches(-0.25)
         elif front:
             # Authors, affiliations and the corresponding-author line.
             pf.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -323,7 +333,12 @@ def format_document(path: str, line_numbers: bool = True) -> dict:
             pf.space_before, pf.space_after = Pt(0), Pt(12)
             pf.first_line_indent = Inches(0)
         else:
-            pf.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+            # Justifying a line that holds a URL, a DOI or a commit hash opens
+            # wide gaps between the other words, because the long token cannot
+            # be broken. Such a paragraph is set flush left instead.
+            long_token = any(len(tok) > 26 for tok in text.split())
+            pf.alignment = (WD_ALIGN_PARAGRAPH.LEFT if long_token
+                            else WD_ALIGN_PARAGRAPH.JUSTIFY)
             pf.line_spacing_rule = WD_LINE_SPACING.DOUBLE
             pf.space_before, pf.space_after = Pt(0), Pt(0)
             # Indent the first line of a running paragraph, so a reader can see
